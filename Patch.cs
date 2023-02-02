@@ -3,6 +3,9 @@ using HarmonyLib;
 
 namespace VolumeControl.Patches
 {
+
+    //Got the idea from doing this from my predecessor, Deathtruth, and his Silent Base Ambience mod
+    //Seems like a good idea still, having a list of the offenders that you can easily iterate through on leaving/entering base, or changing settings
     [HarmonyPatch(typeof(Creature), "Start")]
     public static class CreatureStart_Patch
     {
@@ -19,6 +22,8 @@ namespace VolumeControl.Patches
         }
     }
 
+    //GasPods call PlayEnvWorld which passes no volume, and Stalkers, Sandsharks and Crabsnakes all have their "attack" and "pain" and "death" sounds played through this path as well
+    //This is the lazy way I dealt with it
     [HarmonyPatch(typeof(FMOD_StudioEventEmitter),nameof(FMOD_StudioEventEmitter.PlayOneShotNoWorld))]
     public static class StudioEventEmitterPlayOneShotNoWorld_Patch
     {
@@ -33,6 +38,8 @@ namespace VolumeControl.Patches
         }
     }
 
+    //Some creatures, especially annoying as hell Sandsharks, insist on calling StartEvent multiple times based on creature actions
+    //This can sometime release and make a new EventInstance for the emitter, so I'm forced to patch this in to make sure the new EventInstance also changes volume
     [HarmonyPatch(typeof(FMOD_StudioEventEmitter),nameof(FMOD_StudioEventEmitter.StartEvent))]
     public static class StudioEventEmitterStartEvent_Patch
     {
@@ -43,6 +50,8 @@ namespace VolumeControl.Patches
         }
     }
 
+    //I'll be fully honest, I'm not sure if this is needed, but I'll leave it in for now
+    //If there's any performance issues, this'll be the first suspect
     [HarmonyPatch(typeof(FMOD_CustomEmitter),nameof(FMOD_CustomEmitter.OnPlay))]
     public static class CustomEmitterOnPlay_Patch
     {
@@ -53,6 +62,8 @@ namespace VolumeControl.Patches
         }
     }
 
+    //Another inspiration from my predecessor
+    //Being able to easily tell when the player enters and exits the base is nice and this seemed like a simple way to do it
     [HarmonyPatch(typeof(Player),"UpdateIsUnderwater")]
     public static class PlayerUpdateIsUnderwater_Patch
     {

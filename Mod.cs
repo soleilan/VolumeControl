@@ -39,19 +39,12 @@ namespace VolumeControl
 
             public void ChangeSettings(SliderChangedEventArgs e)
             {
+                //I don't think this is neccessary, but I like it so it stays
                 if (MainGameController.instance != null)
                 {
                     Main.UpdateVolume();
                 }
             }
-
-
-
-
-
-
         }
-
-        
     }
 }

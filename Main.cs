@@ -39,9 +39,11 @@ namespace VolumeControl
             }
         }
         
+        //It's not pretty and there's some overlapping, but I really don't want to affect the wrong things or degrade performance, even if I probably do
+        //Basically just making sure its an object I want to change the volume of and its not already been changed
         public static void ChangeVolume(string name, EventInstance evt)
         {
-            if (name == "Reefback(Clone)" || name == "Gasopod(Clone)" || name == "GasPod(Clone)" || name == "Stalker(Clone)" || name == "SandShark(Clone)" || name == "CrabSnake(Clone)" || name == "GhostRayBlue(Clone)")
+            if (name == "Reefback(Clone)" || name == "ReefbackBaby(Clone)" || name == "Gasopod(Clone)" || name == "GasPod(Clone)" || name == "Stalker(Clone)" || name == "SandShark(Clone)" || name == "Mouth" || name == "Mouth(Clone)" || name == "CrabSnake(Clone)" || name == "GhostRayBlue(Clone)")
             {
                 evt.getVolume(out float currentvolume);
 
@@ -52,6 +54,10 @@ namespace VolumeControl
             }
         }
 
+        //Simple float method to grab respective volumes
+        //I'll leave a list of all the assets that are played by creatures at the bottom of this page, but the short story is that CrabSnakes play some sound through a Mouth object
+        //and GasoPods play a pod_release sound via GasPods, plus Reefback babies
+        //Reefbacks also have some plants and peepers that get spawned alongside them, on their back, so I'm hoping I've stopped those from being affected
         public static float GetVolume(string name)
         {
             float volume = 1f;
@@ -92,6 +98,9 @@ namespace VolumeControl
             return volume;
         }
 
+        //This is what gets called when you enter/exit your base, or change the mod settings
+        //Not the most elegant way, as I believe it also inadvertently affects the plants on the back of Reefbacks, including Peepers and Biters that get spawned along with it
+        //But this is a lazy mod and I'm lazy, plus I hoped ChangeVolume would avoid affecting them
         public static void UpdateVolume()
         {
             foreach (Creature creature in CreatureStart_Patch.creatureList)
@@ -108,6 +117,46 @@ namespace VolumeControl
                     }
                 }
 
+                //Full list of all assets played by the creatures, and which emitters I affect by doing the above method:
+                //The ones that have volume: 1 are offenders that reset their volume somehow, most likely through StartEvent
+
+                //sandshark
+                //[Info: Volume Control] Emitter check!SandShark(Clone) | attack(FMODAsset) | volume: 1 | SandShark(Clone)(FMOD_CustomEmitter)
+                //[Info: Volume Control] Emitter check!SandShark(Clone) | idle(FMODAsset) | volume: 1 | SandShark(Clone)(FMOD_CustomLoopingEmitter)
+                //[Info: Volume Control] Emitter check!SandShark(Clone) | move_sand(FMODAsset) | volume: 1 | SandShark(Clone)(FMOD_CustomLoopingEmitter)
+                //[Info: Volume Control] Emitter check!SandShark(Clone) | idle(FMODAsset) | volume: 1 | SandShark(Clone)(FMOD_CustomLoopingEmitterWithCallback)
+                //[Info: Volume Control] Emitter check!SandShark(Clone) | burrow(FMODAsset) | volume: 0 | SandShark(Clone)(FMOD_StudioEventEmitter)
+                //[Info: Volume Control] Emitter check!SandShark(Clone) | bite(FMODAsset) | volume: 0 | SandShark(Clone)(FMOD_StudioEventEmitter)
+                //[Info: Volume Control] Emitter check!SandShark(Clone) | alert(FMODAsset) | volume: 0 | SandShark(Clone)(FMOD_StudioEventEmitter)
+                //[Info: Volume Control] Emitter check!SandShark(Clone) | death(FMODAsset) | volume: 0 | SandShark(Clone)(FMOD_StudioEventEmitter)
+                //[Info: Volume Control] Emitter check!SandShark(Clone) | pain(FMODAsset) | volume: 0 | SandShark(Clone)(FMOD_StudioEventEmitter
+
+                //stalker
+                //[Info: Volume Control] Emitter check! Stalker(Clone) | charge(FMODAsset) | volume: 1 | Stalker(Clone)(FMOD_CustomEmitter)
+                //[Info: Volume Control] Emitter check! Stalker(Clone) | roar(FMODAsset) | volume: 1 | Stalker(Clone)(FMOD_CustomLoopingEmitter)
+                //[Info: Volume Control] Emitter check! Stalker(Clone) | roar(FMODAsset) | volume: 1 | Stalker(Clone)(FMOD_CustomLoopingEmitterWithCallback)
+                //[Info: Volume Control] Emitter check! Stalker(Clone) | wound(FMODAsset) | volume: 0 | Stalker(Clone)(FMOD_StudioEventEmitter)
+                //[Info: Volume Control] Emitter check! Stalker(Clone) | bite(FMODAsset) | volume: 0 | Stalker(Clone)(FMOD_StudioEventEmitter)
+
+                //ghostrayblue
+                //[Info: Volume Control] Emitter check! GhostRayBlue(Clone) | idle(FMODAsset) | volume: 0 | GhostRayBlue(Clone)(FMOD_CustomLoopingEmitter)
+
+                //crabsnake
+                //[Info: Volume Control] Emitter check! Mouth | idle_swim(FMODAsset) | volume: 1 | Mouth(FMOD_CustomLoopingEmitter)
+                //[Info: Volume Control] Emitter check! CrabSnake(Clone) | attack_cine(FMODAsset) | volume: 0 | CrabSnake(Clone)(FMOD_StudioEventEmitter)
+                //[Info: Volume Control] Emitter check! CrabSnake(Clone) | attack(FMODAsset) | volume: 0 | CrabSnake(Clone)(FMOD_StudioEventEmitter)
+                //[Info: Volume Control] Emitter check! Mouth | alert(FMODAsset) | volume: 1 | Mouth(FMOD_StudioEventEmitter)
+
+                //gasopod
+                //[Info: Volume Control] Emitter check! Gasopod(Clone) | idle(FMODAsset) | volume: 0 | Gasopod(Clone)(FMOD_CustomLoopingEmitter)
+                //[Info: Volume Control] Emitter check! Gasopod(Clone) | idle(FMODAsset) | volume: 0 | Gasopod(Clone)(FMOD_CustomLoopingEmitterWithCallback)
+
+                //reefback
+                //[Info: Volume Control] Emitter check! Reefback(Clone) | idle(FMODAsset) | volume: 0 | Reefback(Clone)(FMOD_CustomLoopingEmitter)
+                //[Info: Volume Control] Emitter check! Reefback(Clone) | idle(FMODAsset) | volume: 0 | Reefback(Clone)(FMOD_CustomLoopingEmitterWithCallback)
+                //[Info: Volume Control] Emitter check! Coral_reef_purple_mushrooms_01_04(Clone) | shroom_in(FMODAsset) | volume: 0 | Coral_reef_purple_mushrooms_01_04(Clone)(FMOD_StudioEventEmitter)
+                //[Info: Volume Control] Emitter check! Coral_reef_purple_mushrooms_01_04(Clone) | shroom_out(FMODAsset) | volume: 0 | Coral_reef_purple_mushrooms_01_04(Clone)(FMOD_StudioEventEmitter)
+                //[Info: Volume Control] Emitter check! Peeper(Clone) | chirp(FMODAsset) | volume: 0 | Peeper(Clone)(FMOD_StudioEventEmitter)
             }
         }
     }
