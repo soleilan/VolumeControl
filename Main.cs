@@ -4,7 +4,9 @@ using FMOD.Studio;
 using HarmonyLib;
 using SMLHelper.V2.Handlers;
 using System;
+using System.Linq;
 using System.Reflection;
+using UnityEngine;
 using VolumeControl.Patches;
 
 namespace VolumeControl
@@ -15,22 +17,13 @@ namespace VolumeControl
         public static Mod.Options SMLConfig { get; } = OptionsPanelHandler.RegisterModOptions<Mod.Options>();
         public static ManualLogSource logger = new ManualLogSource(Mod.Name);
 
-        private const string helloworld = "Hi, if you're decompiling this, please don't be mad at me. " +
-            "I'm a complete amateur with immense anxiety issues, just writing this took a week of no sleep due to anxiety and impostor syndrome. " +
-            "Towards the last day, I just.. couldn't work anymore due to anxiety issues. It was either abandon the project or release it in this state, so here it is. " +
-            "If you think you could do X or Y better/more elegantly/less atrociously, you're welcome to fork the mod, copy the mod, or just make your own! " +
-            "I'm sure I made mistakes, broke coding rules and destroyed your game performance with my implementations. " +
-            "The plan originally with the mod was to expand it for base stuff as well. Volume sliders for scanner room, filtration machine, nuclear reactor and so on, but well.. yeah" +
-            "I 50% did this for personal use, and 50% as an exercise and to learn more modding. " +
-            "It's 02:28 AM, I really just want to get this over with and forget about it at this point. ";
-
         private void Awake()
         {
             try
             {
+                logger = Logger;
                 Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), Mod.GUID);
                 logger.LogInfo(Mod.Name + " " + Mod.Version + " successfully patched!");
-                logger = Logger;
             }
             catch (Exception e)
             {
@@ -43,6 +36,7 @@ namespace VolumeControl
         //Basically just making sure its an object I want to change the volume of and its not already been changed
         public static void ChangeVolume(string name, EventInstance evt)
         {
+            //Yeah, I know, stupid long if statement. Only use it twice, so I didn't feel like making a method for it. It works at least
             if (name == "Reefback(Clone)" || name == "ReefbackBaby(Clone)" || name == "Gasopod(Clone)" || name == "GasPod(Clone)" || name == "Stalker(Clone)" || name == "SandShark(Clone)" || name == "Mouth" || name == "Mouth(Clone)" || name == "CrabSnake(Clone)" || name == "GhostRayBlue(Clone)")
             {
                 evt.getVolume(out float currentvolume);
@@ -103,60 +97,112 @@ namespace VolumeControl
         //But this is a lazy mod and I'm lazy, plus I hoped ChangeVolume would avoid affecting them
         public static void UpdateVolume()
         {
-            foreach (Creature creature in CreatureStart_Patch.creatureList)
+            foreach (Creature creature in CreatureStart_Patch.creatureList.ToList<Creature>())
             {
                 if (creature != null)
                 {
-                    foreach (FMOD_CustomEmitter emitter in creature.GetAllComponentsInChildren<FMOD_CustomEmitter>())
+                    foreach (FMOD_CustomEmitter emitter in creature.GetAllComponentsInChildren<FMOD_CustomEmitter>().ToList<FMOD_CustomEmitter>())
                     {
                         ChangeVolume(emitter.name, emitter.evt);
                     }
-                    foreach (FMOD_StudioEventEmitter emitter in creature.GetAllComponentsInChildren<FMOD_StudioEventEmitter>())
+                    foreach (FMOD_StudioEventEmitter emitter in creature.GetAllComponentsInChildren<FMOD_StudioEventEmitter>().ToList<FMOD_StudioEventEmitter>())
                     {
                         ChangeVolume(emitter.name, emitter.evt);
                     }
                 }
+                else
+                {
+                    CreatureStart_Patch.creatureList.Remove(creature);
+                }
+            }
+            //Full list of all assets played by the creatures, and which emitters I affect by doing the above method:
+            //The ones that have volume: 1 are offenders that reset their volume somehow, most likely through StartEvent
 
-                //Full list of all assets played by the creatures, and which emitters I affect by doing the above method:
-                //The ones that have volume: 1 are offenders that reset their volume somehow, most likely through StartEvent
+            //sandshark
+            //[Info: Volume Control] Emitter check!SandShark(Clone) | attack(FMODAsset) | volume: 1 | SandShark(Clone)(FMOD_CustomEmitter)
+            //[Info: Volume Control] Emitter check!SandShark(Clone) | idle(FMODAsset) | volume: 1 | SandShark(Clone)(FMOD_CustomLoopingEmitter)
+            //[Info: Volume Control] Emitter check!SandShark(Clone) | move_sand(FMODAsset) | volume: 1 | SandShark(Clone)(FMOD_CustomLoopingEmitter)
+            //[Info: Volume Control] Emitter check!SandShark(Clone) | idle(FMODAsset) | volume: 1 | SandShark(Clone)(FMOD_CustomLoopingEmitterWithCallback)
+            //[Info: Volume Control] Emitter check!SandShark(Clone) | burrow(FMODAsset) | volume: 0 | SandShark(Clone)(FMOD_StudioEventEmitter)
+            //[Info: Volume Control] Emitter check!SandShark(Clone) | bite(FMODAsset) | volume: 0 | SandShark(Clone)(FMOD_StudioEventEmitter)
+            //[Info: Volume Control] Emitter check!SandShark(Clone) | alert(FMODAsset) | volume: 0 | SandShark(Clone)(FMOD_StudioEventEmitter)
+            //[Info: Volume Control] Emitter check!SandShark(Clone) | death(FMODAsset) | volume: 0 | SandShark(Clone)(FMOD_StudioEventEmitter)
+            //[Info: Volume Control] Emitter check!SandShark(Clone) | pain(FMODAsset) | volume: 0 | SandShark(Clone)(FMOD_StudioEventEmitter
 
-                //sandshark
-                //[Info: Volume Control] Emitter check!SandShark(Clone) | attack(FMODAsset) | volume: 1 | SandShark(Clone)(FMOD_CustomEmitter)
-                //[Info: Volume Control] Emitter check!SandShark(Clone) | idle(FMODAsset) | volume: 1 | SandShark(Clone)(FMOD_CustomLoopingEmitter)
-                //[Info: Volume Control] Emitter check!SandShark(Clone) | move_sand(FMODAsset) | volume: 1 | SandShark(Clone)(FMOD_CustomLoopingEmitter)
-                //[Info: Volume Control] Emitter check!SandShark(Clone) | idle(FMODAsset) | volume: 1 | SandShark(Clone)(FMOD_CustomLoopingEmitterWithCallback)
-                //[Info: Volume Control] Emitter check!SandShark(Clone) | burrow(FMODAsset) | volume: 0 | SandShark(Clone)(FMOD_StudioEventEmitter)
-                //[Info: Volume Control] Emitter check!SandShark(Clone) | bite(FMODAsset) | volume: 0 | SandShark(Clone)(FMOD_StudioEventEmitter)
-                //[Info: Volume Control] Emitter check!SandShark(Clone) | alert(FMODAsset) | volume: 0 | SandShark(Clone)(FMOD_StudioEventEmitter)
-                //[Info: Volume Control] Emitter check!SandShark(Clone) | death(FMODAsset) | volume: 0 | SandShark(Clone)(FMOD_StudioEventEmitter)
-                //[Info: Volume Control] Emitter check!SandShark(Clone) | pain(FMODAsset) | volume: 0 | SandShark(Clone)(FMOD_StudioEventEmitter
+            //stalker
+            //[Info: Volume Control] Emitter check! Stalker(Clone) | charge(FMODAsset) | volume: 1 | Stalker(Clone)(FMOD_CustomEmitter)
+            //[Info: Volume Control] Emitter check! Stalker(Clone) | roar(FMODAsset) | volume: 1 | Stalker(Clone)(FMOD_CustomLoopingEmitter)
+            //[Info: Volume Control] Emitter check! Stalker(Clone) | roar(FMODAsset) | volume: 1 | Stalker(Clone)(FMOD_CustomLoopingEmitterWithCallback)
+            //[Info: Volume Control] Emitter check! Stalker(Clone) | wound(FMODAsset) | volume: 0 | Stalker(Clone)(FMOD_StudioEventEmitter)
+            //[Info: Volume Control] Emitter check! Stalker(Clone) | bite(FMODAsset) | volume: 0 | Stalker(Clone)(FMOD_StudioEventEmitter)
 
-                //stalker
-                //[Info: Volume Control] Emitter check! Stalker(Clone) | charge(FMODAsset) | volume: 1 | Stalker(Clone)(FMOD_CustomEmitter)
-                //[Info: Volume Control] Emitter check! Stalker(Clone) | roar(FMODAsset) | volume: 1 | Stalker(Clone)(FMOD_CustomLoopingEmitter)
-                //[Info: Volume Control] Emitter check! Stalker(Clone) | roar(FMODAsset) | volume: 1 | Stalker(Clone)(FMOD_CustomLoopingEmitterWithCallback)
-                //[Info: Volume Control] Emitter check! Stalker(Clone) | wound(FMODAsset) | volume: 0 | Stalker(Clone)(FMOD_StudioEventEmitter)
-                //[Info: Volume Control] Emitter check! Stalker(Clone) | bite(FMODAsset) | volume: 0 | Stalker(Clone)(FMOD_StudioEventEmitter)
+            //ghostrayblue
+            //[Info: Volume Control] Emitter check! GhostRayBlue(Clone) | idle(FMODAsset) | volume: 0 | GhostRayBlue(Clone)(FMOD_CustomLoopingEmitter)
 
-                //ghostrayblue
-                //[Info: Volume Control] Emitter check! GhostRayBlue(Clone) | idle(FMODAsset) | volume: 0 | GhostRayBlue(Clone)(FMOD_CustomLoopingEmitter)
+            //crabsnake
+            //[Info: Volume Control] Emitter check! Mouth | idle_swim(FMODAsset) | volume: 1 | Mouth(FMOD_CustomLoopingEmitter)
+            //[Info: Volume Control] Emitter check! CrabSnake(Clone) | attack_cine(FMODAsset) | volume: 0 | CrabSnake(Clone)(FMOD_StudioEventEmitter)
+            //[Info: Volume Control] Emitter check! CrabSnake(Clone) | attack(FMODAsset) | volume: 0 | CrabSnake(Clone)(FMOD_StudioEventEmitter)
+            //[Info: Volume Control] Emitter check! Mouth | alert(FMODAsset) | volume: 1 | Mouth(FMOD_StudioEventEmitter)
 
-                //crabsnake
-                //[Info: Volume Control] Emitter check! Mouth | idle_swim(FMODAsset) | volume: 1 | Mouth(FMOD_CustomLoopingEmitter)
-                //[Info: Volume Control] Emitter check! CrabSnake(Clone) | attack_cine(FMODAsset) | volume: 0 | CrabSnake(Clone)(FMOD_StudioEventEmitter)
-                //[Info: Volume Control] Emitter check! CrabSnake(Clone) | attack(FMODAsset) | volume: 0 | CrabSnake(Clone)(FMOD_StudioEventEmitter)
-                //[Info: Volume Control] Emitter check! Mouth | alert(FMODAsset) | volume: 1 | Mouth(FMOD_StudioEventEmitter)
+            //gasopod
+            //[Info: Volume Control] Emitter check! Gasopod(Clone) | idle(FMODAsset) | volume: 0 | Gasopod(Clone)(FMOD_CustomLoopingEmitter)
+            //[Info: Volume Control] Emitter check! Gasopod(Clone) | idle(FMODAsset) | volume: 0 | Gasopod(Clone)(FMOD_CustomLoopingEmitterWithCallback)
 
-                //gasopod
-                //[Info: Volume Control] Emitter check! Gasopod(Clone) | idle(FMODAsset) | volume: 0 | Gasopod(Clone)(FMOD_CustomLoopingEmitter)
-                //[Info: Volume Control] Emitter check! Gasopod(Clone) | idle(FMODAsset) | volume: 0 | Gasopod(Clone)(FMOD_CustomLoopingEmitterWithCallback)
+            //reefback
+            //[Info: Volume Control] Emitter check! Reefback(Clone) | idle(FMODAsset) | volume: 0 | Reefback(Clone)(FMOD_CustomLoopingEmitter)
+            //[Info: Volume Control] Emitter check! Reefback(Clone) | idle(FMODAsset) | volume: 0 | Reefback(Clone)(FMOD_CustomLoopingEmitterWithCallback)
+            //[Info: Volume Control] Emitter check! Coral_reef_purple_mushrooms_01_04(Clone) | shroom_in(FMODAsset) | volume: 0 | Coral_reef_purple_mushrooms_01_04(Clone)(FMOD_StudioEventEmitter)
+            //[Info: Volume Control] Emitter check! Coral_reef_purple_mushrooms_01_04(Clone) | shroom_out(FMODAsset) | volume: 0 | Coral_reef_purple_mushrooms_01_04(Clone)(FMOD_StudioEventEmitter)
+            //[Info: Volume Control] Emitter check! Peeper(Clone) | chirp(FMODAsset) | volume: 0 | Peeper(Clone)(FMOD_StudioEventEmitter)
 
-                //reefback
-                //[Info: Volume Control] Emitter check! Reefback(Clone) | idle(FMODAsset) | volume: 0 | Reefback(Clone)(FMOD_CustomLoopingEmitter)
-                //[Info: Volume Control] Emitter check! Reefback(Clone) | idle(FMODAsset) | volume: 0 | Reefback(Clone)(FMOD_CustomLoopingEmitterWithCallback)
-                //[Info: Volume Control] Emitter check! Coral_reef_purple_mushrooms_01_04(Clone) | shroom_in(FMODAsset) | volume: 0 | Coral_reef_purple_mushrooms_01_04(Clone)(FMOD_StudioEventEmitter)
-                //[Info: Volume Control] Emitter check! Coral_reef_purple_mushrooms_01_04(Clone) | shroom_out(FMODAsset) | volume: 0 | Coral_reef_purple_mushrooms_01_04(Clone)(FMOD_StudioEventEmitter)
-                //[Info: Volume Control] Emitter check! Peeper(Clone) | chirp(FMODAsset) | volume: 0 | Peeper(Clone)(FMOD_StudioEventEmitter)
+            //Simple stuff below for v.1.1.0
+            //I got some errors: InvalidOperationException: Collection was modified; enumeration operation may not execute.
+            //Most likely due to my decision to remove stuff from lists mid ForEach loop, but I really don't want players to end up with 400 entries in a long game session
+            //Hopefully with .ToList there won't be any issues and it'll work smoothly!
+            foreach (BaseFiltrationMachineGeometry filtrationMachine in BaseFiltrationMachineStart_Patch.filtrationMachineList.ToList<BaseFiltrationMachineGeometry>())
+            {
+                if(filtrationMachine!= null)
+                {
+                    filtrationMachine.workSound.evt.setVolume(SMLConfig.filtrationmachineVolume);
+                }
+                else
+                {
+                    BaseFiltrationMachineStart_Patch.filtrationMachineList.Remove(filtrationMachine);
+                }
+            }
+            foreach(BaseNuclearReactorGeometry nuclearReactor in BaseNuclearReactorStart_Patch.nuclearReactorList.ToList<BaseNuclearReactorGeometry>())
+            {
+                if(nuclearReactor!= null)
+                {
+                    nuclearReactor.workSound.evt.setVolume(SMLConfig.nuclearreactorVolume);
+                }
+                else
+                {
+                    BaseNuclearReactorStart_Patch.nuclearReactorList.Remove(nuclearReactor);
+                }
+            }
+            foreach(Charger charger in ChargerStart_Patch.chargerList.ToList<Charger>())
+            {
+                if(charger!= null)
+                {
+                    charger.soundCharge.evt.setVolume(SMLConfig.chargerVolume);
+                }
+                else
+                {
+                    ChargerStart_Patch.chargerList.Remove(charger);
+                }
+            }
+            foreach(MapRoomFunctionality mapRoom in MapRoomFunctionalityStart_Patch.mapRoomList.ToList<MapRoomFunctionality>())
+            {
+                if(mapRoom!= null)
+                {
+                    mapRoom.ambientSound.evt.setVolume(SMLConfig.scannerroomVolume);
+                }
+                else
+                {
+                    MapRoomFunctionalityStart_Patch.mapRoomList.Remove(mapRoom);
+                }
             }
         }
     }

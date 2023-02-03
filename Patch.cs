@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using HarmonyLib;
+using UnityEngine;
 
 namespace VolumeControl.Patches
 {
@@ -18,6 +19,21 @@ namespace VolumeControl.Patches
             {
                 creatureList.Add(__instance);
                 Main.UpdateVolume();
+            }
+        }
+    }
+
+    //Might be a good idea
+    //v1.1.0 addition
+    [HarmonyPatch(typeof(Creature),nameof(Creature.OnDestroy))]
+    public static class CreatureOnDestroy_Patch
+    {
+        [HarmonyPrefix]
+        private static void Prefix(Creature __instance)
+        {
+            if(CreatureStart_Patch.creatureList.Contains(__instance))
+            {
+                CreatureStart_Patch.creatureList.Remove(__instance);
             }
         }
     }
@@ -77,6 +93,60 @@ namespace VolumeControl.Patches
                 playerInBase = __instance.IsInBase();
                 Main.UpdateVolume();
             }
+        }
+    }
+
+    //v1.1.0 additions below, extending to base stuff, but thankfully ultra insanely easier than dealing with the horrific creature mess, these all mostly have one emitter and they behave
+    [HarmonyPatch(typeof(BaseFiltrationMachineGeometry), nameof(BaseFiltrationMachineGeometry.Start))]
+    public static class BaseFiltrationMachineStart_Patch
+    {
+        public static List<BaseFiltrationMachineGeometry> filtrationMachineList = new List<BaseFiltrationMachineGeometry>();
+
+        [HarmonyPostfix]
+        private static void Postfix(BaseFiltrationMachineGeometry __instance)
+        {
+            filtrationMachineList.Add(__instance);
+            Main.UpdateVolume();
+        }
+    }
+
+    [HarmonyPatch(typeof(BaseNuclearReactorGeometry), nameof(BaseNuclearReactorGeometry.Start))]
+    public static class BaseNuclearReactorStart_Patch
+    {
+        public static List<BaseNuclearReactorGeometry> nuclearReactorList = new List<BaseNuclearReactorGeometry>();
+
+        [HarmonyPostfix]
+        private static void Postfix(BaseNuclearReactorGeometry __instance)
+        {
+            nuclearReactorList.Add(__instance);
+            Main.UpdateVolume();
+        }
+    }
+
+    //The only one that calls StartEvent, so I'm better off patching this to prevent EventInstance desync
+    [HarmonyPatch(typeof(Charger), nameof(Charger.ToggleChargeSound))]
+    public static class ChargerStart_Patch
+    {
+        public static List<Charger> chargerList = new List<Charger>();
+
+        [HarmonyPostfix]
+        private static void Postfix(Charger __instance)
+        {
+            chargerList.Add(__instance);
+            Main.UpdateVolume();
+        }
+    }
+
+    [HarmonyPatch(typeof(MapRoomFunctionality), nameof(MapRoomFunctionality.Start))]
+    public static class MapRoomFunctionalityStart_Patch
+    {
+        public static List<MapRoomFunctionality> mapRoomList = new List<MapRoomFunctionality>();
+
+        [HarmonyPostfix]
+        private static void Postfix(MapRoomFunctionality __instance)
+        {
+            mapRoomList.Add(__instance);
+            Main.UpdateVolume();
         }
     }
 }
