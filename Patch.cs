@@ -1,152 +1,193 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection.Emit;
+using BepInEx.Logging;
+using FMOD;
+using FMOD.Studio;
 using HarmonyLib;
+using SMLHelper.V2.Handlers;
+using SMLHelper.V2.Json;
 using UnityEngine;
+using VolumeControl;
+using static VFXParticlesPool;
 
-namespace VolumeControl.Patches
+namespace VolumeControl
 {
-
-    //Got the idea from doing this from my predecessor, Deathtruth, and his Silent Base Ambience mod
-    //Seems like a good idea still, having a list of the offenders that you can easily iterate through on leaving/entering base, or changing settings
-    [HarmonyPatch(typeof(Creature), "Start")]
-    public static class CreatureStart_Patch
+    public class Patches
     {
-        public static List<Creature> creatureList = new List<Creature>();
+        //Creature lists for ease of use
+        public static List<Reefback> reefbackList = new List<Reefback>();
+        public static List<GasoPod> gasopodList = new List<GasoPod>();
+        public static List<Stalker> stalkerList = new List<Stalker>();
+        public static List<SandShark> sandsharkList = new List<SandShark>();
+        public static List<CrabSnake> crabsnakeList = new List<CrabSnake>();
+        public static List<GhostRay> ghostrayList = new List<GhostRay>();
 
-        [HarmonyPostfix]
-        private static void Postfix(Creature __instance)
-        {
-            if(__instance is Reefback || __instance is GasoPod || __instance is Stalker || __instance is SandShark || __instance is CrabSnake || __instance is GhostRay)
-            {
-                creatureList.Add(__instance);
-                Main.UpdateVolume();
-            }
-        }
-    }
-
-    //Might be a good idea
-    //v1.1.0 addition
-    [HarmonyPatch(typeof(Creature),nameof(Creature.OnDestroy))]
-    public static class CreatureOnDestroy_Patch
-    {
-        [HarmonyPrefix]
-        private static void Prefix(Creature __instance)
-        {
-            if(CreatureStart_Patch.creatureList.Contains(__instance))
-            {
-                CreatureStart_Patch.creatureList.Remove(__instance);
-            }
-        }
-    }
-
-    //GasPods call PlayEnvWorld which passes no volume, and Stalkers, Sandsharks and Crabsnakes all have their "attack" and "pain" and "death" sounds played through this path as well
-    //This is the lazy way I dealt with it
-    [HarmonyPatch(typeof(FMOD_StudioEventEmitter),nameof(FMOD_StudioEventEmitter.PlayOneShotNoWorld))]
-    public static class StudioEventEmitterPlayOneShotNoWorld_Patch
-    {
-        [HarmonyPrefix]
-        public static void Prefix(FMOD_StudioEventEmitter __instance, ref float volume)
-        {
-            if(__instance.asset.name != "pod_burst")
-            {
-                if (__instance.name == "Reefback(Clone)" || __instance.name == "Gasopod(Clone)" || __instance.name == "GasPod(Clone)" || __instance.name == "Stalker(Clone)" || __instance.name == "SandShark(Clone)" || __instance.name == "CrabSnake(Clone)" || __instance.name == "GhostRayBlue(Clone)")
-                    volume = Main.GetVolume(__instance.name);
-            }
-        }
-    }
-
-    //Some creatures, especially annoying as hell Sandsharks, insist on calling StartEvent multiple times based on creature actions
-    //This can sometime release and make a new EventInstance for the emitter, so I'm forced to patch this in to make sure the new EventInstance also changes volume
-    [HarmonyPatch(typeof(FMOD_StudioEventEmitter),nameof(FMOD_StudioEventEmitter.StartEvent))]
-    public static class StudioEventEmitterStartEvent_Patch
-    {
-        [HarmonyPostfix]
-        public static void Postfix(FMOD_StudioEventEmitter __instance)
-        {
-            Main.ChangeVolume(__instance.name, __instance.evt);
-        }
-    }
-
-    //I'll be fully honest, I'm not sure if this is needed, but I'll leave it in for now
-    //If there's any performance issues, this'll be the first suspect
-    [HarmonyPatch(typeof(FMOD_CustomEmitter),nameof(FMOD_CustomEmitter.OnPlay))]
-    public static class CustomEmitterOnPlay_Patch
-    {
-        [HarmonyPostfix]
-        public static void Postfix(FMOD_CustomEmitter __instance)
-        {
-            Main.ChangeVolume(__instance.name, __instance.evt);
-        }
-    }
-
-    //Another inspiration from my predecessor
-    //Being able to easily tell when the player enters and exits the base is nice and this seemed like a simple way to do it
-    [HarmonyPatch(typeof(Player),"UpdateIsUnderwater")]
-    public static class PlayerUpdateIsUnderwater_Patch
-    {
-        public static bool playerInBase;
-
-        [HarmonyPostfix]
-        private static void Postfix(Player __instance)
-        {
-            if(playerInBase != __instance.IsInBase())
-            {
-                playerInBase = __instance.IsInBase();
-                Main.UpdateVolume();
-            }
-        }
-    }
-
-    //v1.1.0 additions below, extending to base stuff, but thankfully ultra insanely easier than dealing with the horrific creature mess, these all mostly have one emitter and they behave
-    [HarmonyPatch(typeof(BaseFiltrationMachineGeometry), nameof(BaseFiltrationMachineGeometry.Start))]
-    public static class BaseFiltrationMachineStart_Patch
-    {
+        //Base module lists for ease of use
+        public static List<MapRoomFunctionality> mapRoomList = new List<MapRoomFunctionality>();
+        public static List<Charger> chargerList = new List<Charger>();
+        public static List<BaseNuclearReactorGeometry> nuclearReactorList = new List<BaseNuclearReactorGeometry>();
         public static List<BaseFiltrationMachineGeometry> filtrationMachineList = new List<BaseFiltrationMachineGeometry>();
 
-        [HarmonyPostfix]
-        private static void Postfix(BaseFiltrationMachineGeometry __instance)
+        public static bool playerInBase;
+
+        public static bool CheckIfValidCreature(Creature creature)
         {
-            filtrationMachineList.Add(__instance);
-            Main.UpdateVolume();
+            if (creature.GetComponent<Reefback>() || creature.GetComponent<GasoPod>() || creature.GetComponent<Stalker>() || creature.GetComponent<SandShark>() || creature.GetComponent<CrabSnake>() || creature.GetComponent<GhostRay>())
+                return true;
+
+            return false;
         }
-    }
 
-    [HarmonyPatch(typeof(BaseNuclearReactorGeometry), nameof(BaseNuclearReactorGeometry.Start))]
-    public static class BaseNuclearReactorStart_Patch
-    {
-        public static List<BaseNuclearReactorGeometry> nuclearReactorList = new List<BaseNuclearReactorGeometry>();
-
-        [HarmonyPostfix]
-        private static void Postfix(BaseNuclearReactorGeometry __instance)
+        public static void AddCreatureToList(Creature creature)
         {
-            nuclearReactorList.Add(__instance);
-            Main.UpdateVolume();
+            switch (creature)
+            {
+                case Reefback reefie:
+                    reefbackList.Add(reefie);
+                    break;
+                case GasoPod gassy:
+                    gasopodList.Add(gassy);
+                    break;
+                case Stalker stalky:
+                    stalkerList.Add(stalky);
+                    break;
+                case SandShark sharky:
+                    sandsharkList.Add(sharky);
+                    break;
+                case CrabSnake snaky:
+                    crabsnakeList.Add(snaky);
+                    break;
+                case GhostRay ghosty:
+                    ghostrayList.Add(ghosty);
+                    break;
+            }
         }
-    }
 
-    //The only one that calls StartEvent, so I'm better off patching this to prevent EventInstance desync
-    [HarmonyPatch(typeof(Charger), nameof(Charger.ToggleChargeSound))]
-    public static class ChargerStart_Patch
-    {
-        public static List<Charger> chargerList = new List<Charger>();
-
-        [HarmonyPostfix]
-        private static void Postfix(Charger __instance)
+        [HarmonyPatch(typeof(Creature),nameof(Creature.Start))]
+        public static class CreatureStart_Patch
         {
-            chargerList.Add(__instance);
-            Main.UpdateVolume();
+            [HarmonyPostfix]
+            public static void Postfix(Creature __instance)
+            {
+                if (CheckIfValidCreature(__instance))
+                {
+                    AddCreatureToList(__instance);
+                    Main.ChangeCreatureVolume(__instance);
+                }
+            }
         }
-    }
 
-    [HarmonyPatch(typeof(MapRoomFunctionality), nameof(MapRoomFunctionality.Start))]
-    public static class MapRoomFunctionalityStart_Patch
-    {
-        public static List<MapRoomFunctionality> mapRoomList = new List<MapRoomFunctionality>();
-
-        [HarmonyPostfix]
-        private static void Postfix(MapRoomFunctionality __instance)
+        //My first transpiler woo
+        //PlayEnvSound is called for a lot of creatures and creature related stuff, so this is going to inject VolumeControl.Main.GetVolume(base.name) into it
+        //Thankfully it already has an internal volume float with a default value of 1f, so this shouldn't affect anything that isn't included in this mod
+        [HarmonyPatch]
+        public class PlayEnvSound_Patch
         {
-            mapRoomList.Add(__instance);
-            Main.UpdateVolume();
+            [HarmonyDebug]
+            [HarmonyTranspiler]
+            [HarmonyPatch(typeof(Utils))]
+            [HarmonyPatch("PlayEnvSound", new Type[] { typeof(FMOD_StudioEventEmitter), typeof(Vector3), typeof(float) })]
+            public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+            {
+                var matcher = new CodeMatcher(instructions).MatchForward(false, new CodeMatch(OpCodes.Ldc_R4, 1f));
+
+                if (!matcher.IsValid)
+                {
+                    Main.logger.LogError("PlayEnvSound_Patch match failed!");
+                    return instructions;
+                }
+
+                matcher.Advance(3);
+                matcher.InsertAndAdvance(new CodeInstruction(OpCodes.Callvirt, typeof(UnityEngine.Object).GetMethod("get_name")));
+                matcher.InsertAndAdvance(new CodeInstruction(OpCodes.Call, typeof(Main).GetMethod(nameof(Main.GetVolume))));
+                matcher.InsertAndAdvance(new CodeInstruction(OpCodes.Stloc_1, null));
+                matcher.Insert(new CodeInstruction(OpCodes.Ldarg_0, null));
+
+                return matcher.InstructionEnumeration();
+            }
+        }
+
+        //Some creatures, especially annoying as hell Sandsharks, insist on calling StartEvent multiple times based on creature actions
+        //This can sometime release and make a new EventInstance for the emitter I think, so I'm forced to patch this in to make sure the new EventInstance also changes volume
+        [HarmonyPatch(typeof(FMOD_StudioEventEmitter), nameof(FMOD_StudioEventEmitter.StartEvent))]
+        public static class StudioEventEmitterStartEvent_Patch
+        {
+            [HarmonyPostfix]
+            public static void Postfix(FMOD_StudioEventEmitter __instance)
+            {
+                if (__instance.GetComponentInParent<Reefback>() || __instance.GetComponentInParent<GasoPod>() || __instance.GetComponentInParent<Stalker>() || __instance.GetComponentInParent<SandShark>() || __instance.GetComponentInParent<CrabSnake>() || __instance.GetComponentInParent<GhostRay>())
+                    __instance.evt.setVolume(Main.GetVolume(__instance.name));
+            }
+        }
+
+        //Another inspiration from my predecessor
+        //Being able to easily tell when the player enters and exits the base is nice and this seemed like a simple way to do it
+        [HarmonyPatch(typeof(Player), "UpdateIsUnderwater")]
+        public static class PlayerUpdateIsUnderwater_Patch
+        {
+            [HarmonyPostfix]
+            private static void Postfix(Player __instance)
+            {
+                if (playerInBase != __instance.IsInBase())
+                {
+                    playerInBase = __instance.IsInBase();
+                    Main.UpdateBaseModulesVolume();
+                    Main.UpdateCreaturesVolume();
+                }
+            }
+        }
+
+        //v1.1.0 additions below, extending to base stuff, but thankfully ultra insanely easier than dealing with the horrific creature mess, these all mostly have one emitter and they behave
+        [HarmonyPatch(typeof(BaseFiltrationMachineGeometry), nameof(BaseFiltrationMachineGeometry.Start))]
+        public static class BaseFiltrationMachineStart_Patch
+        {
+            [HarmonyPostfix]
+            private static void Postfix(BaseFiltrationMachineGeometry __instance)
+            {
+                filtrationMachineList.Add(__instance);
+                Main.UpdateBaseModulesVolume();
+            }
+        }
+
+        [HarmonyPatch(typeof(BaseNuclearReactorGeometry), nameof(BaseNuclearReactorGeometry.Start))]
+        public static class BaseNuclearReactorStart_Patch
+        {
+            [HarmonyPostfix]
+            private static void Postfix(BaseNuclearReactorGeometry __instance)
+            {
+                nuclearReactorList.Add(__instance);
+                Main.UpdateBaseModulesVolume();
+            }
+        }
+
+        //The only one that calls StartEvent, so I'm better off patching this to prevent EventInstance desync
+        //Turns out, no, that's an awful idea because it destroys framerates, this will do
+        [HarmonyPatch(typeof(Charger), nameof(Charger.Start))]
+        public static class ChargerStart_Patch
+        {
+            [HarmonyPostfix]
+            private static void Postfix(Charger __instance)
+            {
+                if(__instance.GetComponent<BatteryCharger>() || __instance.GetComponent<PowerCellCharger>())
+                {
+                    chargerList.Add(__instance);
+                    Main.UpdateBaseModulesVolume();
+                }
+               
+            }
+        }
+
+        [HarmonyPatch(typeof(MapRoomFunctionality), nameof(MapRoomFunctionality.Start))]
+        public static class MapRoomFunctionalityStart_Patch
+        {
+            [HarmonyPostfix]
+            private static void Postfix(MapRoomFunctionality __instance)
+            {
+                mapRoomList.Add(__instance);
+                Main.UpdateBaseModulesVolume();
+            }
         }
     }
 }

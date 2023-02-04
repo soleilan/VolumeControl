@@ -1,6 +1,10 @@
-﻿using SMLHelper.V2.Json;
+﻿using FMOD.Studio;
+using SMLHelper.V2.Json;
 using SMLHelper.V2.Options;
 using SMLHelper.V2.Options.Attributes;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 
 namespace VolumeControl
 {
@@ -54,7 +58,8 @@ namespace VolumeControl
                 //On second thought, probably neccessary
                 if (MainGameController.instance != null)
                 {
-                    Main.UpdateVolume();
+                    Main.UpdateBaseModulesVolume();
+                    Main.UpdateCreaturesVolume();
                 }
             }
         }
