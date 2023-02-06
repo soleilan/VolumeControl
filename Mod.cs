@@ -1,10 +1,6 @@
-﻿using FMOD.Studio;
-using SMLHelper.V2.Json;
+﻿using SMLHelper.V2.Json;
 using SMLHelper.V2.Options;
 using SMLHelper.V2.Options.Attributes;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 
 namespace VolumeControl
 {
@@ -12,7 +8,7 @@ namespace VolumeControl
     {
         public const string GUID = "space.soleil.volumecontrol";
         public const string Name = "Volume Control";
-        public const string Version = "1.1.0";
+        public const string Version = "1.2.1";
 
         [Menu(Mod.Name)]
         public class Options : ConfigFile
@@ -26,8 +22,8 @@ namespace VolumeControl
             public float reefbackVolume = 1f;
 
             [Slider("Gasopod Volume", 0f, 1f, DefaultValue = 1f, Id = "gasopodVolume", Step = 0.01f, Format = "{0:0%}"), OnChange(nameof(ChangeSettings))]
-            public float gasopodVolume = 1f;            
-            
+            public float gasopodVolume = 1f;
+
             [Slider("Stalker Volume", 0f, 1f, DefaultValue = 1f, Id = "stalkerVolume", Step = 0.01f, Format = "{0:0%}"), OnChange(nameof(ChangeSettings))]
             public float stalkerVolume = 1f;
 
@@ -36,7 +32,7 @@ namespace VolumeControl
 
             [Slider("Crabsnake Volume", 0f, 1f, DefaultValue = 1f, Id = "crabsnakeVolume", Step = 0.01f, Format = "{0:0%}"), OnChange(nameof(ChangeSettings))]
             public float crabsnakeVolume = 1f;
-            
+
             [Slider("Ghost Ray Volume", 0f, 1f, DefaultValue = 1f, Id = "ghostrayVolume", Step = 0.01f, Format = "{0:0%}"), OnChange(nameof(ChangeSettings))]
             public float ghostrayVolume = 1f;
 

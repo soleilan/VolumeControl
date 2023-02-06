@@ -1,19 +1,11 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
-using FMOD.Studio;
-using FMOD;
-using FMODUnity;
 using HarmonyLib;
-using HarmonyLib.Tools;
 using SMLHelper.V2.Handlers;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using UnityEngine;
-using JetBrains.Annotations;
-using System.Collections.Generic;
-using System.Collections;
-using UnityEngine.Audio;
 
 namespace VolumeControl
 {
@@ -22,13 +14,11 @@ namespace VolumeControl
     {
         public static Mod.Options SMLConfig { get; } = OptionsPanelHandler.RegisterModOptions<Mod.Options>();
         public static ManualLogSource logger = new ManualLogSource(Mod.Name);
-        
+
         private void Awake()
         {
             try
             {
-                Harmony.DEBUG = true;
-                HarmonyFileLog.Enabled = true;
                 logger = Logger;
                 Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), Mod.GUID);
                 logger.LogInfo(Mod.Name + " " + Mod.Version + " successfully patched!");
@@ -69,7 +59,7 @@ namespace VolumeControl
         {
             foreach (FMOD_CustomEmitter emitter in creature.GetAllComponentsInChildren<FMOD_CustomEmitter>())
             {
-                if(!emitter.evt.isValid())
+                if (!emitter.evt.isValid())
                     emitter.CacheEventInstance();
 
                 if (emitter.name == creature.name || emitter.name == "Mouth")
@@ -91,7 +81,7 @@ namespace VolumeControl
                 if (!emitter.evt.isValid())
                     emitter.CacheEventInstance();
 
-                if(emitter.name == creature.name)
+                if (emitter.name == creature.name)
                 {
                     emitter.evt.getVolume(out float currentvol);
 
@@ -166,46 +156,58 @@ namespace VolumeControl
         {
             foreach (BaseFiltrationMachineGeometry filtrationMachine in Patches.filtrationMachineList.ToList<BaseFiltrationMachineGeometry>())
             {
-                if(filtrationMachine!= null)
+                if (filtrationMachine != null)
                 {
-                    filtrationMachine.workSound.evt.setVolume(SMLConfig.filtrationmachineVolume);
-                    logger.LogInfo(filtrationMachine.workSound.name);
+                    filtrationMachine.workSound.evt.getVolume(out float curvol);
+                    if (curvol != SMLConfig.filtrationmachineVolume)
+                    {
+                        filtrationMachine.workSound.evt.setVolume(SMLConfig.filtrationmachineVolume);
+                    }
                 }
                 else
                 {
                     Patches.filtrationMachineList.Remove(filtrationMachine);
                 }
             }
-            foreach(BaseNuclearReactorGeometry nuclearReactor in Patches.nuclearReactorList.ToList<BaseNuclearReactorGeometry>())
+            foreach (BaseNuclearReactorGeometry nuclearReactor in Patches.nuclearReactorList.ToList<BaseNuclearReactorGeometry>())
             {
-                if(nuclearReactor!= null)
+                if (nuclearReactor != null)
                 {
-                    nuclearReactor.workSound.evt.setVolume(SMLConfig.nuclearreactorVolume);
-                    logger.LogInfo(nuclearReactor.workSound.name);
+                    nuclearReactor.workSound.evt.getVolume(out float curvol);
+                    if (curvol != SMLConfig.nuclearreactorVolume)
+                    {
+                        nuclearReactor.workSound.evt.setVolume(SMLConfig.nuclearreactorVolume);
+                    }
                 }
                 else
                 {
                     Patches.nuclearReactorList.Remove(nuclearReactor);
                 }
             }
-            foreach(Charger charger in Patches.chargerList.ToList<Charger>())
+            foreach (Charger charger in Patches.chargerList.ToList<Charger>())
             {
-                if(charger!= null)
+                if (charger != null)
                 {
-                    charger.soundCharge.evt.setVolume(SMLConfig.chargerVolume);
-                    logger.LogInfo(charger.soundCharge.name);
+                    charger.soundCharge.evt.getVolume(out float curvol);
+                    if (curvol != SMLConfig.chargerVolume)
+                    {
+                        charger.soundCharge.evt.setVolume(SMLConfig.chargerVolume);
+                    }
                 }
                 else
                 {
                     Patches.chargerList.Remove(charger);
                 }
             }
-            foreach(MapRoomFunctionality mapRoom in Patches.mapRoomList.ToList<MapRoomFunctionality>())
+            foreach (MapRoomFunctionality mapRoom in Patches.mapRoomList.ToList<MapRoomFunctionality>())
             {
-                if(mapRoom!= null)
+                if (mapRoom != null)
                 {
-                    mapRoom.ambientSound.evt.setVolume(SMLConfig.scannerroomVolume);
-                    logger.LogInfo(mapRoom.ambientSound.name);
+                    mapRoom.ambientSound.evt.getVolume(out float curvol);
+                    if (curvol != SMLConfig.scannerroomVolume)
+                    {
+                        mapRoom.ambientSound.evt.setVolume(SMLConfig.scannerroomVolume);
+                    }
                 }
                 else
                 {

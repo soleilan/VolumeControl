@@ -1,20 +1,12 @@
-﻿using System;
+﻿using HarmonyLib;
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection.Emit;
-using BepInEx.Logging;
-using FMOD;
-using FMOD.Studio;
-using HarmonyLib;
-using SMLHelper.V2.Handlers;
-using SMLHelper.V2.Json;
 using UnityEngine;
-using VolumeControl;
-using static VFXParticlesPool;
 
 namespace VolumeControl
 {
-    public class Patches
+    public static class Patches
     {
         //Creature lists for ease of use
         public static List<Reefback> reefbackList = new List<Reefback>();
@@ -65,7 +57,7 @@ namespace VolumeControl
             }
         }
 
-        [HarmonyPatch(typeof(Creature),nameof(Creature.Start))]
+        [HarmonyPatch(typeof(Creature), nameof(Creature.Start))]
         public static class CreatureStart_Patch
         {
             [HarmonyPostfix]
@@ -83,9 +75,8 @@ namespace VolumeControl
         //PlayEnvSound is called for a lot of creatures and creature related stuff, so this is going to inject VolumeControl.Main.GetVolume(base.name) into it
         //Thankfully it already has an internal volume float with a default value of 1f, so this shouldn't affect anything that isn't included in this mod
         [HarmonyPatch]
-        public class PlayEnvSound_Patch
+        public static class PlayEnvSound_Patch
         {
-            [HarmonyDebug]
             [HarmonyTranspiler]
             [HarmonyPatch(typeof(Utils))]
             [HarmonyPatch("PlayEnvSound", new Type[] { typeof(FMOD_StudioEventEmitter), typeof(Vector3), typeof(float) })]
@@ -118,7 +109,13 @@ namespace VolumeControl
             public static void Postfix(FMOD_StudioEventEmitter __instance)
             {
                 if (__instance.GetComponentInParent<Reefback>() || __instance.GetComponentInParent<GasoPod>() || __instance.GetComponentInParent<Stalker>() || __instance.GetComponentInParent<SandShark>() || __instance.GetComponentInParent<CrabSnake>() || __instance.GetComponentInParent<GhostRay>())
-                    __instance.evt.setVolume(Main.GetVolume(__instance.name));
+                {
+                    __instance.evt.getVolume(out float curvol);
+                    if (curvol != Main.GetVolume(__instance.name))
+                    {
+                        __instance.evt.setVolume(Main.GetVolume(__instance.name));
+                    }
+                }
             }
         }
 
@@ -170,12 +167,12 @@ namespace VolumeControl
             [HarmonyPostfix]
             private static void Postfix(Charger __instance)
             {
-                if(__instance.GetComponent<BatteryCharger>() || __instance.GetComponent<PowerCellCharger>())
+                if (__instance.GetComponent<BatteryCharger>() || __instance.GetComponent<PowerCellCharger>())
                 {
                     chargerList.Add(__instance);
                     Main.UpdateBaseModulesVolume();
                 }
-               
+
             }
         }
 
